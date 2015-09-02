@@ -1,2 +1,2 @@
 # rocksq
-A in-process queue based on RocksDB
+A queue based on RocksDB
