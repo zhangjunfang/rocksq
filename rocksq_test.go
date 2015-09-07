@@ -29,6 +29,7 @@ func TestBasic(t *testing.T) {
 			t.Fatalf("Failed to enqueue the data, %s", err)
 		}
 	}
+	fmt.Printf("Queue message left: %d\n", q.ApproximateSize())
 
 	var startId uint64 = 1
 	for {
@@ -72,6 +73,8 @@ func TestEncodingJson(t *testing.T) {
 			t.Fatalf("Failed to enqueue the json object, %s", err)
 		}
 	}
+	fmt.Printf("Queue message left: %d\n", q.ApproximateSize())
+
 	var startId uint64 = 1
 	for {
 		var value time.Time
@@ -108,6 +111,8 @@ func TestEncodingGob(t *testing.T) {
 			t.Fatalf("Failed to enqueue the gob object, %s", err)
 		}
 	}
+	fmt.Printf("Queue message left: %d\n", q.ApproximateSize())
+
 	var startId uint64 = 1
 	for {
 		var value Point

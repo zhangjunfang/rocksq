@@ -27,6 +27,12 @@ type Queue struct {
 	bufPool  *bpool.BufferPool
 }
 
+func (q *Queue) ApproximateSize() uint64 {
+	head := q.getIndexId("head", 1)
+	tail := q.getIndexId("tail", 0)
+	return tail - head + 1
+}
+
 func (q *Queue) Enqueue(data []byte) (uint64, error) {
 	id := atomic.AddUint64(&q.tail, 1)
 	wb := rocks.NewWriteBatch()

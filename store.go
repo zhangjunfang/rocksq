@@ -162,6 +162,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 	s.DB = db
 	s.dbOpts = opts
 	s.ro = rocks.NewDefaultReadOptions()
+	s.ro.SetFillCache(false)
 	s.wo = rocks.NewDefaultWriteOptions()
 	s.wo.DisableWAL(options.DisableWAL)
 	s.wo.SetSync(options.Sync)
