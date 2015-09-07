@@ -140,16 +140,6 @@ func (q *Queue) initQueue() {
 	q.head = q.getIndexId("head", 0)
 	q.tail = q.getIndexId("tail", 0)
 	log.Debugf("[Queue] init queue from store, name=%s, head=%d, tail=%d", q.name, q.head, q.tail)
-
-	store := q.store
-	it := store.NewIteratorCF(store.ro, q.cfHandle)
-	defer it.Close()
-	it.Seek(q.key(1))
-	for ; it.Valid(); it.Next() {
-		key := makeSlice(it.Key())
-		value := makeSlice(it.Value())
-		log.Debugf("key=%v, value=%s", key, string(value))
-	}
 }
 
 func (q *Queue) getIndexId(name string, defaultValue uint64) uint64 {
