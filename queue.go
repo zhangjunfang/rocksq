@@ -2,6 +2,7 @@ package rocksq
 
 import (
 	"encoding/binary"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"sync/atomic"
@@ -38,22 +39,6 @@ func (q *Queue) Enqueue(data []byte) (uint64, error) {
 	return id, err
 }
 
-func (q *Queue) EnqueueJson(value interface{}) (uint64, error) {
-	buf := q.bufPool.Get()
-	defer func() {
-		buf.Reset()
-		q.bufPool.Put(buf)
-	}()
-
-	enc := json.NewEncoder(buf)
-	if err := enc.Encode(value); err != nil {
-		log.Warnf("Error when encoding object into json, %s", err)
-		return 0, err
-	} else {
-		return q.Enqueue(buf.Bytes())
-	}
-}
-
 func (q *Queue) Dequeue() (uint64, []byte, error) {
 	store := q.store
 	it := store.NewIteratorCF(store.ro, q.cfHandle)
@@ -80,6 +65,21 @@ func (q *Queue) Dequeue() (uint64, []byte, error) {
 	return id, value, err
 }
 
+func (q *Queue) EnqueueJson(value interface{}) (uint64, error) {
+	buf := q.bufPool.Get()
+	defer func() {
+		buf.Reset()
+		q.bufPool.Put(buf)
+	}()
+
+	enc := json.NewEncoder(buf)
+	if err := enc.Encode(value); err != nil {
+		log.Warnf("[Queue] Error when encoding object into json, %s", err)
+		return 0, err
+	}
+	return q.Enqueue(buf.Bytes())
+}
+
 func (q *Queue) DequeueJson(value interface{}) (uint64, error) {
 	id, data, err := q.Dequeue()
 	if err != nil {
@@ -87,6 +87,41 @@ func (q *Queue) DequeueJson(value interface{}) (uint64, error) {
 	}
 	if err := json.Unmarshal(data, value); err != nil {
 		log.Warnf("[Queue] Error when decoding json, %s", err)
+		return id, err
+	}
+	return id, nil
+}
+
+func (q *Queue) EnqueueGob(value interface{}) (uint64, error) {
+	buf := q.bufPool.Get()
+	defer func() {
+		buf.Reset()
+		q.bufPool.Put(buf)
+	}()
+
+	enc := gob.NewEncoder(buf)
+	if err := enc.Encode(value); err != nil {
+		log.Warnf("[Queue] Error when encoding object into gob, %s", err)
+		return 0, err
+	}
+	return q.Enqueue(buf.Bytes())
+}
+
+func (q *Queue) DequeueGob(value interface{}) (uint64, error) {
+	id, data, err := q.Dequeue()
+	if err != nil {
+		return id, err
+	}
+
+	buf := q.bufPool.Get()
+	defer func() {
+		buf.Reset()
+		q.bufPool.Put(buf)
+	}()
+	buf.Write(data)
+	dec := gob.NewDecoder(buf)
+	if err := dec.Decode(value); err != nil {
+		log.Warnf("[Queue] Error when decoding gob, %s", err)
 		return id, err
 	}
 	return id, nil
