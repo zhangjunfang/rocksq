@@ -38,3 +38,10 @@ DiableWAL = true
 BenchmarkEnqueue-4        500000              5163 ns/op
 BenchmarkDequeue-4        200000             12365 ns/op
 ```
+
+SetFillCache = false
+
+```
+BenchmarkEnqueue-4        500000              4688 ns/op 
+BenchmarkDequeue-4        200000             14117 ns/op
+```
