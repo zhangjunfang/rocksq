@@ -38,6 +38,7 @@ func init() {
 	store, err = NewStore(StoreOptions{
 		Directory:  "/opt/rocksq2",
 		MemorySize: 5 * 1024 * 1024,
+		DisableWAL: true,
 		IsDebug:    false,
 	})
 	if err != nil {

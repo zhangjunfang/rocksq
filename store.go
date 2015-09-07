@@ -9,6 +9,7 @@ import (
 	rocks "github.com/tecbot/gorocksdb"
 )
 
+// StoreOptions defines the options for rocksdb storage
 type StoreOptions struct {
 	Directory         string
 	WriteBufferSize   int
@@ -17,6 +18,7 @@ type StoreOptions struct {
 	FileSizeBase      uint64
 	Compression       rocks.CompressionType
 	Parallel          int
+	DisableWAL        bool
 	IsDebug           bool
 }
 
@@ -38,6 +40,7 @@ func (so *StoreOptions) SetDefaults() {
 	}
 }
 
+// Store defines the basic rocksdb wrapper
 type Store struct {
 	*rocks.DB
 	sync.RWMutex
@@ -51,6 +54,7 @@ type Store struct {
 	wo        *rocks.WriteOptions
 }
 
+// NewQueue will return a named queue using Column Family from RocksDB
 func (s *Store) NewQueue(name string) (*Queue, error) {
 	s.Lock()
 	defer s.Unlock()
@@ -73,6 +77,7 @@ func (s *Store) NewQueue(name string) (*Queue, error) {
 	return newQueue(name, s, cfHandle), nil
 }
 
+// Close the rocksdb database
 func (s *Store) Close() {
 	for _, handle := range s.cfHandles {
 		handle.Destroy()
@@ -80,11 +85,13 @@ func (s *Store) Close() {
 	s.DB.Close()
 }
 
+// Destroy the rocksdb instance and data files
 func (s *Store) Destroy() {
 	s.Close()
 	rocks.DestroyDb(s.directory, rocks.NewDefaultOptions())
 }
 
+// NewStore returns the Store a rocksdb wrapper
 func NewStore(options StoreOptions) (*Store, error) {
 	options.SetDefaults()
 	if options.IsDebug {
@@ -100,7 +107,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 	opts := rocks.NewDefaultOptions()
 	opts.SetCreateIfMissing(true)
 	opts.IncreaseParallelism(options.Parallel)
-	opts.SetMergeOperator(&CountMerger{})
+	opts.SetMergeOperator(&_CountMerger{})
 	opts.SetMaxSuccessiveMerges(64)
 
 	opts.SetWriteBufferSize(options.WriteBufferSize)
@@ -155,6 +162,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 	s.dbOpts = opts
 	s.ro = rocks.NewDefaultReadOptions()
 	s.wo = rocks.NewDefaultWriteOptions()
+	s.wo.DisableWAL(options.DisableWAL)
 
 	if len(cfNames) > 0 {
 		for i := range cfNames {
