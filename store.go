@@ -19,6 +19,7 @@ type StoreOptions struct {
 	Compression       rocks.CompressionType
 	Parallel          int
 	DisableWAL        bool
+	Sync              bool
 	IsDebug           bool
 }
 
@@ -163,6 +164,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 	s.ro = rocks.NewDefaultReadOptions()
 	s.wo = rocks.NewDefaultWriteOptions()
 	s.wo.DisableWAL(options.DisableWAL)
+	s.wo.SetSync(options.Sync)
 
 	if len(cfNames) > 0 {
 		for i := range cfNames {
