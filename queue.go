@@ -39,11 +39,15 @@ func (q *Queue) Enqueue(data []byte) (uint64, error) {
 	return id, err
 }
 
-func (q *Queue) Dequeue() (uint64, []byte, error) {
+func (q *Queue) Dequeue(startId ...uint64) (uint64, []byte, error) {
 	store := q.store
 	it := store.NewIteratorCF(store.ro, q.cfHandle)
 	defer it.Close()
-	it.Seek(q.key(1))
+	var seekId uint64 = 1
+	if len(startId) > 0 {
+		seekId = startId[0]
+	}
+	it.Seek(q.key(seekId))
 	if !it.Valid() {
 		return 0, nil, EmptyQueue
 	}
@@ -79,8 +83,8 @@ func (q *Queue) EnqueueJson(value interface{}) (uint64, error) {
 	return q.Enqueue(buf.Bytes())
 }
 
-func (q *Queue) DequeueJson(value interface{}) (uint64, error) {
-	id, data, err := q.Dequeue()
+func (q *Queue) DequeueJson(value interface{}, startId ...uint64) (uint64, error) {
+	id, data, err := q.Dequeue(startId...)
 	if err != nil {
 		return id, err
 	}
@@ -106,8 +110,8 @@ func (q *Queue) EnqueueGob(value interface{}) (uint64, error) {
 	return q.Enqueue(buf.Bytes())
 }
 
-func (q *Queue) DequeueGob(value interface{}) (uint64, error) {
-	id, data, err := q.Dequeue()
+func (q *Queue) DequeueGob(value interface{}, startId ...uint64) (uint64, error) {
+	id, data, err := q.Dequeue(startId...)
 	if err != nil {
 		return id, err
 	}
@@ -137,7 +141,7 @@ func (q *Queue) id(key []byte) uint64 {
 }
 
 func (q *Queue) initQueue() {
-	q.head = q.getIndexId("head", 0)
+	q.head = q.getIndexId("head", 1)
 	q.tail = q.getIndexId("tail", 0)
 	log.Debugf("[Queue] init queue from store, name=%s, head=%d, tail=%d", q.name, q.head, q.tail)
 }

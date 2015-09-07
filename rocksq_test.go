@@ -30,8 +30,10 @@ func TestBasic(t *testing.T) {
 		}
 	}
 
+	var startId uint64 = 1
 	for {
-		id, data, err := q.Dequeue()
+		id, data, err := q.Dequeue(startId)
+		startId = id
 		if err != nil {
 			if err != EmptyQueue {
 				t.Fatalf("Failed to dequeue dta, %s", err)
@@ -70,9 +72,11 @@ func TestEncodingJson(t *testing.T) {
 			t.Fatalf("Failed to enqueue the json object, %s", err)
 		}
 	}
+	var startId uint64 = 1
 	for {
 		var value time.Time
-		id, err := q.DequeueJson(&value)
+		id, err := q.DequeueJson(&value, startId)
+		startId = id
 		if err != nil {
 			if err != EmptyQueue {
 				t.Fatalf("Failed to dequeue json object, %s", err)
@@ -104,9 +108,11 @@ func TestEncodingGob(t *testing.T) {
 			t.Fatalf("Failed to enqueue the gob object, %s", err)
 		}
 	}
+	var startId uint64 = 1
 	for {
 		var value Point
-		id, err := q.DequeueGob(&value)
+		id, err := q.DequeueGob(&value, startId)
+		startId = id
 		if err != nil {
 			if err != EmptyQueue {
 				t.Fatalf("Failed to dequeue gob object, %s", err)

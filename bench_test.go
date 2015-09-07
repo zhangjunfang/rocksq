@@ -23,11 +23,13 @@ func BenchmarkDequeue(b *testing.B) {
 		panic(err)
 	}
 	b.ResetTimer()
+	var startId uint64 = 1
 	for i := 0; i < b.N; i += 1 {
-		_, _, err := q.Dequeue()
+		id, _, err := q.Dequeue(startId)
 		if err != nil && err != EmptyQueue {
 			panic(err)
 		}
+		startId = id
 	}
 }
 

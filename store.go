@@ -10,9 +10,32 @@ import (
 )
 
 type StoreOptions struct {
-	Directory  string
-	MemorySize int
-	IsDebug    bool
+	Directory         string
+	WriteBufferSize   int
+	WriteBufferNumber int
+	MemorySize        int
+	FileSizeBase      uint64
+	Compression       rocks.CompressionType
+	Parallel          int
+	IsDebug           bool
+}
+
+func (so *StoreOptions) SetDefaults() {
+	if so.MemorySize <= 0 {
+		so.MemorySize = 8 * 1024 * 1024
+	}
+	if so.FileSizeBase <= 0 {
+		so.FileSizeBase = 64 * 1024 * 1024
+	}
+	if so.WriteBufferSize <= 0 {
+		so.WriteBufferSize = 64 * 1024 * 1024
+	}
+	if so.WriteBufferNumber <= 0 {
+		so.WriteBufferNumber = 4
+	}
+	if so.Parallel <= 0 {
+		so.Parallel = runtime.NumCPU()
+	}
 }
 
 type Store struct {
@@ -63,6 +86,7 @@ func (s *Store) Destroy() {
 }
 
 func NewStore(options StoreOptions) (*Store, error) {
+	options.SetDefaults()
 	if options.IsDebug {
 		log.EnableDebug()
 	}
@@ -75,20 +99,20 @@ func NewStore(options StoreOptions) (*Store, error) {
 
 	opts := rocks.NewDefaultOptions()
 	opts.SetCreateIfMissing(true)
-	opts.IncreaseParallelism(runtime.NumCPU())
+	opts.IncreaseParallelism(options.Parallel)
 	opts.SetMergeOperator(&CountMerger{})
-	opts.SetMaxSuccessiveMerges(5)
+	opts.SetMaxSuccessiveMerges(64)
 
-	opts.SetWriteBufferSize(64 * 1024 * 1024)
-	opts.SetMaxWriteBufferNumber(3)
-	opts.SetTargetFileSizeBase(64 * 1024 * 1024)
+	opts.SetWriteBufferSize(options.WriteBufferSize)
+	opts.SetMaxWriteBufferNumber(options.WriteBufferNumber)
+	opts.SetTargetFileSizeBase(options.FileSizeBase)
 	opts.SetLevel0FileNumCompactionTrigger(8)
-	opts.SetLevel0SlowdownWritesTrigger(17)
+	opts.SetLevel0SlowdownWritesTrigger(16)
 	opts.SetLevel0StopWritesTrigger(24)
 	opts.SetNumLevels(4)
 	opts.SetMaxBytesForLevelBase(512 * 1024 * 1024)
 	opts.SetMaxBytesForLevelMultiplier(8)
-	opts.SetCompression(0)
+	opts.SetCompression(options.Compression)
 
 	bbto := rocks.NewDefaultBlockBasedTableOptions()
 	bbto.SetBlockCache(rocks.NewLRUCache(options.MemorySize))
