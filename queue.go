@@ -14,6 +14,7 @@ import (
 
 var (
 	EmptyQueue = errors.New("No new message in the queue")
+	oneBinary  []byte
 )
 
 type Queue struct {
@@ -30,8 +31,7 @@ func (q *Queue) Enqueue(data []byte) (uint64, error) {
 	id := atomic.AddUint64(&q.tail, 1)
 	wb := rocks.NewWriteBatch()
 	defer wb.Destroy()
-	// FIXME: use the merge to add the tail
-	wb.PutCF(q.cfHandle, q.metaKey("tail"), q.key(id))
+	wb.MergeCF(q.cfHandle, q.metaKey("tail"), oneBinary)
 	wb.PutCF(q.cfHandle, q.key(id), data)
 	err := q.store.Write(q.store.wo, wb)
 
@@ -50,11 +50,10 @@ func (q *Queue) Dequeue() (uint64, []byte, error) {
 
 	wb := rocks.NewWriteBatch()
 	defer wb.Destroy()
-	//FIXME: use the merge to update the head
 	key := makeSlice(it.Key())
 	value := makeSlice(it.Value())
 	wb.DeleteCF(q.cfHandle, key)
-	wb.PutCF(q.cfHandle, q.metaKey("head"), key)
+	wb.MergeCF(q.cfHandle, q.metaKey("head"), oneBinary)
 	err := store.Write(store.wo, wb)
 	if err == nil {
 		atomic.AddUint64(&q.head, 1)
@@ -182,4 +181,9 @@ func newQueue(name string, store *Store, cfHandle *rocks.ColumnFamilyHandle) *Qu
 	}
 	q.initQueue()
 	return q
+}
+
+func init() {
+	oneBinary = make([]byte, 8)
+	binary.BigEndian.PutUint64(oneBinary, 1)
 }

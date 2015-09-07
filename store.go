@@ -55,9 +55,6 @@ func (s *Store) Close() {
 		handle.Destroy()
 	}
 	s.DB.Close()
-	s.dbOpts.Destroy()
-	s.ro.Destroy()
-	s.wo.Destroy()
 }
 
 func (s *Store) Destroy() {
@@ -79,6 +76,8 @@ func NewStore(options StoreOptions) (*Store, error) {
 	opts := rocks.NewDefaultOptions()
 	opts.SetCreateIfMissing(true)
 	opts.IncreaseParallelism(runtime.NumCPU())
+	opts.SetMergeOperator(&CountMerger{})
+	opts.SetMaxSuccessiveMerges(5)
 
 	opts.SetWriteBufferSize(64 * 1024 * 1024)
 	opts.SetMaxWriteBufferNumber(3)
