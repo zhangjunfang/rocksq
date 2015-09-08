@@ -18,13 +18,21 @@ var (
 )
 
 type Queue struct {
-	name string
-	head uint64
-	tail uint64
+	name       string
+	head       uint64
+	tail       uint64
+	useTailing bool
 
-	cfHandle *rocks.ColumnFamilyHandle
-	store    *Store
-	bufPool  *bpool.BufferPool
+	cfHandle     *rocks.ColumnFamilyHandle
+	tailIterator *rocks.Iterator
+	store        *Store
+	bufPool      *bpool.BufferPool
+}
+
+func (q *Queue) Close() {
+	if q.useTailing {
+		q.tailIterator.Close()
+	}
 }
 
 func (q *Queue) ApproximateSize() uint64 {
@@ -47,13 +55,24 @@ func (q *Queue) Enqueue(data []byte) (uint64, error) {
 
 func (q *Queue) Dequeue(startId ...uint64) (uint64, []byte, error) {
 	store := q.store
-	it := store.NewIteratorCF(store.ro, q.cfHandle)
-	defer it.Close()
+
 	var seekId uint64 = 1
 	if len(startId) > 0 {
 		seekId = startId[0]
 	}
-	it.Seek(q.key(seekId))
+
+	var it *rocks.Iterator
+	if q.useTailing {
+		it = q.tailIterator
+		if !it.Valid() {
+			it.Seek(q.key(seekId))
+		}
+	} else {
+		it = store.NewIteratorCF(store.ro, q.cfHandle)
+		defer it.Close()
+		it.Seek(q.key(seekId))
+	}
+
 	if !it.Valid() {
 		return 0, nil, EmptyQueue
 	}
@@ -67,6 +86,9 @@ func (q *Queue) Dequeue(startId ...uint64) (uint64, []byte, error) {
 	err := store.Write(store.wo, wb)
 	if err == nil {
 		atomic.AddUint64(&q.head, 1)
+		if q.useTailing {
+			it.Next()
+		}
 	}
 
 	id := q.id(key)
@@ -149,6 +171,10 @@ func (q *Queue) id(key []byte) uint64 {
 func (q *Queue) initQueue() {
 	q.head = q.getIndexId("head", 1)
 	q.tail = q.getIndexId("tail", 0)
+	if q.useTailing {
+		store := q.store
+		q.tailIterator = store.NewIteratorCF(store.ro, q.cfHandle)
+	}
 	log.Debugf("[Queue] init queue from store, name=%s, head=%d, tail=%d", q.name, q.head, q.tail)
 }
 
@@ -172,12 +198,13 @@ func (q *Queue) metaKey(sufix string) []byte {
 	return oddKey
 }
 
-func newQueue(name string, store *Store, cfHandle *rocks.ColumnFamilyHandle) *Queue {
+func newQueue(name string, store *Store, cfHandle *rocks.ColumnFamilyHandle, useTailing bool) *Queue {
 	q := &Queue{
-		name:     name,
-		store:    store,
-		cfHandle: cfHandle,
-		bufPool:  bpool.NewBufferPool(64),
+		name:       name,
+		useTailing: useTailing,
+		store:      store,
+		cfHandle:   cfHandle,
+		bufPool:    bpool.NewBufferPool(64),
 	}
 	q.initQueue()
 	return q

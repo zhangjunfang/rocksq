@@ -11,16 +11,18 @@ import (
 
 // StoreOptions defines the options for rocksdb storage
 type StoreOptions struct {
-	Directory         string
-	WriteBufferSize   int
-	WriteBufferNumber int
-	MemorySize        int
-	FileSizeBase      uint64
-	Compression       rocks.CompressionType
-	Parallel          int
-	DisableWAL        bool
-	Sync              bool
-	IsDebug           bool
+	Directory             string
+	WriteBufferSize       int
+	WriteBufferNumber     int
+	MemorySize            int
+	FileSizeBase          uint64
+	Compression           rocks.CompressionType
+	Parallel              int
+	DisableAutoCompaction bool
+	DisableWAL            bool
+	Sync                  bool
+	UseTailing            bool
+	IsDebug               bool
 }
 
 func (so *StoreOptions) SetDefaults() {
@@ -46,8 +48,9 @@ type Store struct {
 	*rocks.DB
 	sync.RWMutex
 
-	directory string
-	dbOpts    *rocks.Options
+	directory  string
+	useTailing bool
+	dbOpts     *rocks.Options
 
 	cfHandles map[string]*rocks.ColumnFamilyHandle
 	queues    map[string]*Queue
@@ -75,11 +78,14 @@ func (s *Store) NewQueue(name string) (*Queue, error) {
 			s.cfHandles[name] = cfHandle
 		}
 	}
-	return newQueue(name, s, cfHandle), nil
+	return newQueue(name, s, cfHandle, s.useTailing), nil
 }
 
 // Close the rocksdb database
 func (s *Store) Close() {
+	for _, queue := range s.queues {
+		queue.Close()
+	}
 	for _, handle := range s.cfHandles {
 		handle.Destroy()
 	}
@@ -100,9 +106,10 @@ func NewStore(options StoreOptions) (*Store, error) {
 	}
 
 	s := &Store{
-		directory: options.Directory,
-		cfHandles: make(map[string]*rocks.ColumnFamilyHandle),
-		queues:    make(map[string]*Queue),
+		directory:  options.Directory,
+		useTailing: options.UseTailing,
+		cfHandles:  make(map[string]*rocks.ColumnFamilyHandle),
+		queues:     make(map[string]*Queue),
 	}
 
 	opts := rocks.NewDefaultOptions()
@@ -121,6 +128,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 	opts.SetMaxBytesForLevelBase(512 * 1024 * 1024)
 	opts.SetMaxBytesForLevelMultiplier(8)
 	opts.SetCompression(options.Compression)
+	opts.SetDisableAutoCompactions(options.DisableAutoCompaction)
 
 	bbto := rocks.NewDefaultBlockBasedTableOptions()
 	bbto.SetBlockCache(rocks.NewLRUCache(options.MemorySize))
@@ -163,6 +171,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 	s.dbOpts = opts
 	s.ro = rocks.NewDefaultReadOptions()
 	s.ro.SetFillCache(false)
+	s.ro.SetTailing(options.UseTailing)
 	s.wo = rocks.NewDefaultWriteOptions()
 	s.wo.DisableWAL(options.DisableWAL)
 	s.wo.SetSync(options.Sync)

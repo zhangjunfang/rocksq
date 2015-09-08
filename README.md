@@ -28,20 +28,29 @@ An embeded persistent queue based on RocksDB
 ### Benchmark
 
 ```
-BenchmarkEnqueue-4        300000              7706 ns/op
-BenchmarkDequeue-4        100000             30211 ns/op
+BenchmarkEnqueue-4        500000              6798 ns/op
+BenchmarkDequeue-4        200000             16434 ns/op
 ```
 
 DiableWAL = true
 
 ```
-BenchmarkEnqueue-4        500000              5163 ns/op
-BenchmarkDequeue-4        200000             12365 ns/op
+BenchmarkEnqueue-4        500000              4983 ns/op
+BenchmarkDequeue-4        200000             17159 ns/op
 ```
 
-SetFillCache = false
+SetFillCache = false, DisableWAL = true
 
 ```
-BenchmarkEnqueue-4        500000              4688 ns/op 
-BenchmarkDequeue-4        200000             14117 ns/op
+BenchmarkEnqueue-4        500000              4623 ns/op
+BenchmarkDequeue-4        300000             10098 ns/op
 ```
+
+DisableWAL = true, UseTailing = true
+
+```
+BenchmarkEnqueue-4        500000              4690 ns/op
+BenchmarkDequeue-4        500000              6108 ns/op
+```
+
+PS: Tailing iterator really helps a lot to reduce the seek cost, but the test case maybe not that realistic since only very few seek happens.
