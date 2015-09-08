@@ -65,6 +65,8 @@ func (q *Queue) Dequeue(startId ...uint64) (uint64, []byte, error) {
 	if q.useTailing {
 		it = q.tailIterator
 		if !it.Valid() {
+			// FIXME?(mijia): When Dequeue happens faster than enqueue, the tail iterator would be exhausted
+			// so we have seek it again.
 			it.Seek(q.key(seekId))
 		}
 	} else {
