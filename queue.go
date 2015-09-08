@@ -60,6 +60,9 @@ func (q *Queue) Dequeue(startId ...uint64) (uint64, []byte, error) {
 	if len(startId) > 0 {
 		seekId = startId[0]
 	}
+	if seekId < 1 {
+		seekId = 1
+	}
 
 	var it *rocks.Iterator
 	if q.useTailing {
@@ -96,6 +99,18 @@ func (q *Queue) Dequeue(startId ...uint64) (uint64, []byte, error) {
 	id := q.id(key)
 	log.Debugf("[Queue] Dequeued data id=%d, err=%v", id, err)
 	return id, value, err
+}
+
+func (q *Queue) EnqueueString(value string) (uint64, error) {
+	return q.Enqueue([]byte(value))
+}
+
+func (q *Queue) DequeueString(startId ...uint64) (uint64, string, error) {
+	id, data, err := q.Dequeue(startId...)
+	if err != nil {
+		return id, "", err
+	}
+	return id, string(data), nil
 }
 
 func (q *Queue) EnqueueJson(value interface{}) (uint64, error) {

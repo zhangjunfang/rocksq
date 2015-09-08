@@ -1,6 +1,7 @@
 package rocksq
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"sync"
@@ -101,6 +102,9 @@ func (s *Store) Destroy() {
 // NewStore returns the Store a rocksdb wrapper
 func NewStore(options StoreOptions) (*Store, error) {
 	options.SetDefaults()
+	if options.Directory == "" {
+		return nil, fmt.Errorf("Empty directory of store options")
+	}
 	if options.IsDebug {
 		log.EnableDebug()
 	}
