@@ -54,3 +54,9 @@ BenchmarkDequeue-4        500000              6108 ns/op
 ```
 
 PS: Tailing iterator really helps a lot to reduce the seek cost, but the test case maybe not that realistic since only very few seek happens.
+
+### Notes
+
+1. Rocksq uses the tailing iterator inside the Dequeue which I don't think it's thread safe, so should set the StoreOptions.DisableTailing = true for this.
+
+### MIT License
