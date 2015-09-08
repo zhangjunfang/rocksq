@@ -20,8 +20,8 @@ type StoreOptions struct {
 	Parallel              int
 	DisableAutoCompaction bool
 	DisableWAL            bool
+	DisableTailing        bool
 	Sync                  bool
-	UseTailing            bool
 	IsDebug               bool
 }
 
@@ -107,7 +107,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 
 	s := &Store{
 		directory:  options.Directory,
-		useTailing: options.UseTailing,
+		useTailing: !options.DisableTailing,
 		cfHandles:  make(map[string]*rocks.ColumnFamilyHandle),
 		queues:     make(map[string]*Queue),
 	}
@@ -171,7 +171,7 @@ func NewStore(options StoreOptions) (*Store, error) {
 	s.dbOpts = opts
 	s.ro = rocks.NewDefaultReadOptions()
 	s.ro.SetFillCache(false)
-	s.ro.SetTailing(options.UseTailing)
+	s.ro.SetTailing(!options.DisableTailing)
 	s.wo = rocks.NewDefaultWriteOptions()
 	s.wo.DisableWAL(options.DisableWAL)
 	s.wo.SetSync(options.Sync)
